@@ -8,8 +8,9 @@ public class MainManager : MonoBehaviour
     public int LineCount = 6;
     public Rigidbody Ball;
 
+    public Text BestScoreText;
     public Text ScoreText;
-    public GameObject GameOverText;
+    public Text GameOverText;
 
     private bool m_Started = false;
     private int m_Points;
@@ -20,6 +21,7 @@ public class MainManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        ShowBestScore();
         SetScore(0);
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
@@ -67,26 +69,50 @@ public class MainManager : MonoBehaviour
         SetScore(m_Points);
     }
 
+    private void ShowBestScore()
+    {
+        var highScore = HighScoreManager.LoadHighScore();
+        if (highScore.records.Count == 0) return;
+
+        var bestScoreRecord = highScore.records[0];
+        BestScoreText.text = $"Best Score : {bestScoreRecord.playerName} : {bestScoreRecord.score}";
+        BestScoreText.gameObject.SetActive(true);
+    }
+
     private void SetScore(int point)
     {
-        string playerName;
-        if (SessionManager.Instance != null
-            && SessionManager.Instance.playerName != null
-            && SessionManager.Instance.playerName.Trim().Length == 0)
-        {
-            playerName = SessionManager.Instance.playerName.Trim();
-        }
-        else
-        {
-            playerName = "Anonymous";
-        }
-
-        ScoreText.text = $"Score : {playerName} : {point}";
+        ScoreText.text = $"Score : {GetPlayerName()} : {point}";
     }
 
     public void GameOver()
     {
         m_GameOver = true;
-        GameOverText.SetActive(true);
+
+        HighScoreManager.SubmitPlayerScore(GetPlayerName(), m_Points);
+        var highScore = HighScoreManager.LoadHighScore();
+
+        string gameOverText = "GAME OVER\n";
+
+        if (highScore.records.Count > 0)
+        {
+            gameOverText += $"\nTop {HighScoreManager.MaxRecordsNumber} High Score\n";
+        }
+
+        for (int i = 0; i < highScore.records.Count; i++)
+        {
+            var record = highScore.records[i];
+            gameOverText += $"({i + 1}) {record.playerName} : {record.score}\n";
+        }
+
+        gameOverText += "\nPress Space to Restart";
+        GameOverText.text = gameOverText;
+        GameOverText.gameObject.SetActive(true);
+    }
+
+    private string GetPlayerName()
+    {
+        return SessionManager.Instance == null
+            ? SessionManager.DefaultPlayerName
+            : SessionManager.Instance.GetPlayerName();
     }
 }
